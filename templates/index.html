@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}GNS3 Lab Viewer{% endblock %}
+
+{% block body %}
+<div class="layout">
+  <aside class="left-pane" id="left-pane">
+    <header class="pane-header">
+      <div class="brand"><strong>GNS3 Labs</strong></div>
+      <div class="controls">
+        <form method="get" action="/">
+          <label for="lab">Lab:</label>
+          <select id="lab" name="lab" onchange="this.form.submit()">
+            {% for lab in labs %}
+              <option value="{{ lab }}" {% if lab == current_lab %}selected{% endif %}>{{ lab }}</option>
+            {% endfor %}
+          </select>
+          {% if current_lab %}
+            {% if editing %}
+              <input type="hidden" name="edit" value="1"/>
+              <button formaction="/" formmethod="get" name="lab" value="{{ current_lab }}">View</button>
+            {% else %}
+              <input type="hidden" name="edit" value="1"/>
+              <button>Edit</button>
+            {% endif %}
+          {% endif %}
+        </form>
+      </div>
+    </header>
+
+    <!-- Left index (Table of Contents) -->
+    <nav class="toc">
+      <div class="toc-title">On this page</div>
+      <div class="toc-content">
+        {{ toc_html|safe }}
+      </div>
+    </nav>
+
+    <main class="instructions">
+      {% if editing %}
+        <!-- Edit mode UI -->
+        <form id="edit-form" onsubmit="return saveLab(event);">
+          <textarea id="editor" name="content" spellcheck="false">{{ raw_md }}</textarea>
+
+          <div class="edit-actions">
+            <button type="submit">Save</button>
+            <a class="link" href="/?lab={{ current_lab }}">Cancel</a>
+            <a class="link" href="/labs/{{ current_lab }}.md" target="_blank">Open raw</a>
+          </div>
+        </form>
+      {% else %}
+        <!-- Read-only rendered Markdown -->
+        <article class="markdown">
+          {{ lab_html|safe }}
+        </article>
+      {% endif %}
+    </main>
+  </aside>
+
+  <div class="resizer" id="dragbar" title="Drag to resize"></div>
+
+  <section class="right-pane">
+    <header class="pane-header">
+      <div class="brand"><strong>GNS3 Web UI</strong></div>
+      <div class="controls">
+        <form method="get" action="" onsubmit="event.preventDefault(); updateIframe();">
+          <input id="gns3url" type="url" placeholder="http://127.0.0.1:3080" value="{{ gns3_url }}" />
+          <button type="submit">Open</button>
+        </form>
+      </div>
+    </header>
+    <div class="iframe-wrap">
+      <iframe id="gns3frame" src="{{ gns3_url }}" allowfullscreen referrerpolicy="no-referrer"></iframe>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Drag-to-resize logic for the left pane
+  const dragbar = document.getElementById("dragbar");
+  const leftPane = document.getElementById("left-pane");
+  let isDragging = false;
+
+  dragbar.addEventListener("mousedown", () => {
+    isDragging = true;
+    document.body.classList.add("resizing");
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const newWidth = Math.max(260, Math.min(window.innerWidth - 320, e.clientX));
+    leftPane.style.width = newWidth + "px";
+  });
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+    document.body.classList.remove("resizing");
+  });
+
+  function updateIframe() {
+    const val = document.getElementById("gns3url").value;
+    const frame = document.getElementById("gns3frame");
+    if (val) frame.src = val;
+  }
+
+  async function saveLab(ev) {
+    ev.preventDefault();
+    const content = document.getElementById("editor").value;
+    const data = new FormData();
+    data.append("lab", "{{ current_lab }}");
+    data.append("content", content);
+
+    const resp = await fetch("/save_lab", { method: "POST", body: data });
+    const j = await resp.json();
+    if (j.ok) {
+      // reload in view mode
+      window.location.href = "/?lab={{ current_lab }}";
+    } else {
+      alert("Save failed: " + (j.error || "Unknown error"));
+    }
+    return false;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}GNS3 Lab Viewer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>pre code { white-space: pre-wrap; }</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <a class="brand-link" href="{{ url_for('home') }}">GNS3 Lab Viewer</a>
+    </div>
+    <div class="topbar-right">
+      {% if current_user.is_authenticated %}
+        <span class="user-pill">👤 {{ current_user.name }}</span>
+        <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a class="btn" href="{{ url_for('login') }}">Login</a>
+      {% endif %}
+    </div>
+  </header>
+  {% block body %}{% endblock %}
+</body>
+</html>
